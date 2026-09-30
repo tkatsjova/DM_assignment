@@ -1,6 +1,6 @@
 import re
 
-"""Per-document text normalization."""
+# Per-document text normalization
 
 # Parts that only say "there is nothing to report"; humans write them much more often than GPT-4, so they are treated the same as an empty part
 EMPTY_MARKERS = {"nothing", "none", "nil", "n/a", "na", "-", "no", "nothing at all"}

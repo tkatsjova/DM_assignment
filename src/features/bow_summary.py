@@ -4,12 +4,12 @@ import pandas as pd
 from src.config import LABEL_NAMES
 from src.features.vectorizer import build_vectorizer
 
-"""Overview of the bag-of-words representation of the training set.
+# Overview of the bag-of-words representation of the training set.
 
-Mirrors the inspection steps of the course example in R: a review before and after
-preprocessing, the size of the document-term matrix before and after sparse-term
-removal, its sparsity, and a small part of the matrix (tm's inspect()).
-"""
+# Mirrors the inspection steps of the course example in R: a review before and after
+# preprocessing, the size of the document-term matrix before and after sparse-term
+# removal, its sparsity, and a small part of the matrix (tm's inspect()).
+
 
 EXAMPLE_MIN_DF = 5  # illustrative threshold; the value used by the models is tuned by CV
 N_ROWS_PER_CLASS, N_TERMS = 5, 6

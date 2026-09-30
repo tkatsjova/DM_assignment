@@ -7,10 +7,9 @@ from src.config import LABEL_NAMES, RANDOM_STATE
 from src.data.preprocessing import is_empty_marker, normalize_text
 from src.features.vectorizer import build_vectorizer
 
-"""Evidence behind the preprocessing decisions (docs/preprocessing_decisions.md).
+# Evidence behind the preprocessing decisions (docs/preprocessing_decisions.md).
+#Computed on the training set only, so that the test set does not influence any preprocessing choice.
 
-Computed on the training set only, so that the test set does not influence any preprocessing choice.
-"""
 
 
 STOP_WORDS_SHOWN = ["a", "the", "i", "we", "my", "it", "very", "were", "with", "was"]

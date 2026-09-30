@@ -1,6 +1,6 @@
 from sklearn.feature_extraction.text import CountVectorizer
 
-"""Bag-of-words representation shared by all models."""
+# Bag-of-words representation shared by all models
 
 # Default token_pattern (\w\w+) drops one-character tokens such as "i" and "a",
 # which differ between the classes; keep every word token instead

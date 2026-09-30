@@ -9,10 +9,15 @@ ENGLISH_DATA_PATH = PROCESSED_DIR / "english_reviews.csv"
 SPLIT_PATH = ROOT / "data" / "split" / "train_test_split.csv"
 TEST_SIZE = 0.25
 RANDOM_STATE = 42
+CV_FOLDS = 5
 
 STATS_PATH = ROOT / "results" / "data_statistics.md"
 BOW_SUMMARY_PATH = ROOT / "results" / "bow_summary.md"
 AUDIT_PATH = ROOT / "results" / "preprocessing_audit.md"
+NAIVE_BAYES_PATH = ROOT / "results" / "naive_bayes.md"
+LOGISTIC_REGRESSION_PATH = ROOT / "results" / "logistic_regression.md"
+TEST_EVALUATION_PATH = ROOT / "results" / "test_evaluation.md"
+TEST_PREDICTIONS_PATH = ROOT / "results" / "test_predictions.csv"
 
 LANGUAGE = "English"
 

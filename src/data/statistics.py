@@ -8,7 +8,7 @@ from src.config import LABEL_NAMES, STATS_PATH
 
 def compute_statistics(df):
     # Descriptive statistics of the cleaned data set, grouped by class
-    
+
     df = df.assign(
         cls=df["label"].map(LABEL_NAMES),
         score=df["score"].round().astype(int),
@@ -52,7 +52,7 @@ def compute_statistics(df):
 
 
 def _flat(table):
-    """Turn index and columns into plain string headers and rows."""
+    # Turn index and columns into plain string headers and rows
     n_index = table.index.nlevels
     table = table.reset_index()
     table = table.rename(columns={"cls": "class"})
@@ -90,10 +90,12 @@ def print_statistics(stats, title="Data statistics"):
         console.print(rich_table)
 
 
-def save_statistics(stats, path=STATS_PATH, title="Data statistics"):
-    """Write all tables into one Markdown file (default: results/data_statistics.md)."""
+def save_statistics(stats, path=STATS_PATH, title="Data statistics", note=None):
+    # Write all tables into one Markdown file (default: results/data_statistics.md)
     path.parent.mkdir(parents=True, exist_ok=True)
     lines = [f"# {title}", ""]
+    if note:
+        lines += [note, ""]
     for name, table in stats.items():
         headers, rows, n_index = _flat(table)
         lines += [f"## {name}", ""]
