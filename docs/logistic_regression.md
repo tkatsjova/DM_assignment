@@ -155,8 +155,8 @@ Accuracy by sentiment: negative 0.924, positive 0.896 (250 reviews each).
 
 *Interpretation.*
 - **Test accuracy agrees with CV** (0.910 vs. 0.915); the difference is well within the
-  uncertainty of a 500-review test set (standard error ≈ 0.013). The tuning did not overfit
-  the validation folds.
+  uncertainty of a 500-review test set (standard error ≈ 0.013). This agreement is reassuring,
+  but does not rule out overfitting during tuning.
 - **The errors are balanced:** 21 human reviews labelled generated, 24 generated reviews missed,
   so precision and recall are almost equal.
 - **Positive reviews are harder** than negative ones (0.896 vs. 0.924), as reported by
@@ -182,7 +182,7 @@ Accuracy by sentiment: negative 0.924, positive 0.896 (250 reviews each).
 - [ ] Top-5 terms per direction with coefficients, odds factors and review counts; interpretation (LR5).
 - [ ] Limitations: artifact *downside* (generation prompt).
 - [ ] Test results: accuracy 0.910, precision 0.915, recall 0.904, F1 0.910; confusion matrix.
-- [ ] Test accuracy agrees with CV (0.915): no overfitting of the tuning.
+- [ ] Test accuracy agrees with CV (0.915), but this does not rule out overfitting during tuning.
 - [ ] Balanced errors (21 false positives, 24 false negatives).
 - [ ] Positive reviews harder than negative (0.896 vs. 0.924), as in Ignat et al. (2025).
 - [ ] Limitations: errors depend on review length (short generated reviews missed, long human

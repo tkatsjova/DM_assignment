@@ -25,7 +25,8 @@ def build_pipeline():
                 LogisticRegression(
                     l1_ratio=1,  # pure L1 penalty (sklearn >= 1.8 replaces penalty="l1" by l1_ratio)
                     solver="liblinear",
-                    # liblinear penalizes the intercept like a coefficient; a large scaling makes this penalty negligible, as in the lasso objective of the course where beta_0 is not penalized
+                    # liblinear penalizes the intercept; large scaling makes this penalty
+                    # negligible, approximating the course's unpenalized beta_0.
                     intercept_scaling=100,
                     max_iter=5000,
                     random_state=RANDOM_STATE,
@@ -83,7 +84,11 @@ def sparsity_path(pipeline, train):
     rows = []
     for c in C_VALUES:
         fitted = clone(pipeline).set_params(model__C=c).fit(train["clean_text"], train["label"])
-        rows.append({"C": c, "lambda = 1/C": round(1 / c, 4), "non-zero coefficients": int(np.count_nonzero(fitted["model"].coef_))})
+        rows.append({
+            "C": c,
+            "lambda = 1/C": round(1 / c, 4),
+            "non-zero coefficients": int(np.count_nonzero(fitted["model"].coef_)),
+        })
     return pd.DataFrame(rows).set_index("C")
 
 

@@ -56,16 +56,17 @@ Hastie et al., 2009, §7.10):
    simplest of them (as `cv.glmnet` takes the largest λ among equal minima);
 2. compute its standard error: SE = s / √K, with s the sample standard deviation
    (divisor K − 1) of its K = 5 fold accuracies;
-3. all settings with accuracy ≥ best − SE are considered equally good;
+3. all settings with accuracy ≥ best − SE are eligible for selection;
 4. among these, choose the **simplest** setting; ties are broken by the higher accuracy,
    then by the order of the grid.
 
 This is the rule the course uses for logistic regression (`cv.glmnet`, `lambda.1se`, with the
 same SE formula), and the dashed line in `rpart`'s `plotcp`. The course prunes the tree of
 its example at the minimum CV error instead; we apply the 1-SE rule to all models for
-consistency: among statistically indistinguishable settings the simpler model is preferred,
-because it is less likely to have won by chance and is easier to interpret. Each model defines
-its own measure of complexity (see the model documents).
+consistency: among settings within the threshold, we prefer the simpler model to avoid
+chasing small differences in CV accuracy. This is a selection heuristic, not a test of
+statistical significance or proof that the settings perform equally well. Each model
+defines its own measure of complexity (see the model documents).
 
 *Implementation notes.* `GridSearchCV` reports the fold standard deviation with divisor K
 (ddof = 0); it is recomputed with divisor K − 1, as in `cv.glmnet`. Mean accuracies are rounded

@@ -5,19 +5,25 @@ bag-of-words models. Data: MAiDE-up (Ignat et al., 2025), English reviews only.
 
 ## Start
 
-1. Run the training pipeline (see *How to run*) — it verifies the saved split and creates training tables.
-2. Read `results/data_statistics.md` and `results/bow_summary.md` to get to know the data.
-3. Read the overview tables in `docs/` to see what was decided and why (see *Documentation*).
-4. To add a model, follow *Adding a model* below.
+1. Read `results/data_statistics.md` and `results/bow_summary.md` to get to know the data.
+2. Read the overview tables in `docs/` to see what was decided and why (see *Documentation*).
+3. Follow *How to run* to reproduce all experiments, or *Working with a single model* to inspect one.
 
 ## How to run
 
 Requires Python 3.13. From the project root:
 
+On Windows, use `.\.venv\Scripts\python.exe` in place of `python` in the commands
+below. On a fresh checkout, create that environment first with
+`py -3.13 -m venv .venv`.
+
 ```bash
-pip install -r requirements.txt
+python -m pip install -r requirements.txt
 python main.py
 ```
+
+Recorded results are already in `results/`. Running `main.py` retunes all five models
+and rewrites the training reports; no rerun is needed just to read them.
 
 The raw data file `all_data.csv` (from https://github.com/MichiganNLP/multilingual_reviews_deception)
 must be placed in `data/raw/`. The default command runs data preparation and training-set
@@ -103,9 +109,12 @@ defines its pipeline, its grid, its complexity function and how its important fe
 | `docs/modelling_setup.md` | shared modelling decisions (CV, 1-SE rule, test evaluation), comparison of the models |
 | `docs/naive_bayes.md` | naive Bayes: decisions, results, important features |
 | `docs/logistic_regression.md` | logistic regression with L1 penalty: decisions, results, important features |
+| `docs/classification_tree.md` | Gini classification tree: pruning, CV results, size, important features |
+| `docs/random_forest.md` | random forest: CV tuning, leaf-size selection, forest structure, important features |
+| `docs/gradient_boosting.md` | gradient boosting: fixed-stage tuning, depth selection, training curve, important features |
 
-Every document states the motivation with references and ends with a checklist of what must
-be mentioned in the report.
+The documents explain the choices, results and limitations, with references and
+points to include in the report.
 
 ## Shared code for all models
 
@@ -157,21 +166,56 @@ show the index of every DataFrame as its first column(s).
 - Selected: `C = 1`, unigrams, `min_df = 10`, 208 of 829 coefficients non-zero, CV accuracy 0.915.
 - Decisions and interpretation: `docs/logistic_regression.md`.
 
+### Classification tree — `src/models/classification_tree.py`
+
+- Pipeline: `vectorizer → DecisionTreeClassifier(criterion="gini", random_state=42)`.
+- Grid: `ccp_alpha` ∈ {0, 0.0005, 0.001, 0.002, 0.005, 0.01, 0.02} ×
+  `VECTORIZER_GRID` (56 settings). Zero is the unpruned baseline.
+- Complexity for the 1-SE rule: `-ccp_alpha`; larger alpha is preferred within one SE.
+- `run_classification_tree(train)` returns the refitted model and tables with selected
+  settings, all CV results, tree depth/leaves, and five Gini feature importances.
+- Selected: `ccp_alpha=0.002`, uni+bigrams, `min_df=5`, CV accuracy 0.8040;
+  depth 17 and 61 leaves after refitting on all training reviews.
+- Decisions and interpretation: `docs/classification_tree.md`. Test evaluation is pending.
+
+### Random forest — `src/models/random_forest.py`
+
+- Pipeline: `vectorizer → RandomForestClassifier(criterion="gini", bootstrap=True,
+  random_state=42, n_jobs=1)`; OOB scoring is disabled.
+- Grid: `n_estimators` ∈ {100, 300}, `max_features` ∈ {sqrt, log2},
+  `min_samples_leaf` ∈ {1, 3}, together with `VECTORIZER_GRID` (64 settings).
+- Shared five-fold CV: 320 fits and 64,000 trees, plus the selected model's full-training refit.
+- Complexity for the 1-SE rule: `-min_samples_leaf`. Larger leaves are preferred;
+  other settings tie on this proxy and are resolved by CV accuracy, then grid order.
+- `run_random_forest(train)` returns the refitted model and tables with all CV results,
+  training accuracy, forest depth/leaf/node summaries, five impurity importances, and runtime.
+- Selected: 300 trees, log2 features, leaf size 1, uni+bigrams, `min_df=10`;
+  CV accuracy 0.9207 and training accuracy 1.0000. The full RF experiment took about 4m 22s
+  on the recorded machine; runtimes vary.
+- Decisions and interpretation: `docs/random_forest.md`. Test evaluation is pending.
+
+### Gradient boosting — `src/models/gradient_boosting.py`
+
+- Pipeline: `vectorizer → GradientBoostingClassifier(loss="log_loss", n_estimators=100,
+  subsample=1.0, n_iter_no_change=None, random_state=42)`.
+- Final grid: `learning_rate` ∈ {0.05, 0.1, 0.2, 0.3}, `max_depth` ∈ {1, 2, 3, 4},
+  together with `VECTORIZER_GRID` (128 settings). The stage count is fixed, not tuned.
+- Shared five-fold CV: 640 fits and 64,000 regression trees, plus the 100-tree final refit.
+  A scoped joblib context uses four CPU workers and limits library threads to one per worker;
+  boosting stages within each fit are sequential. Existing classifiers' execution is unchanged.
+- Complexity for the 1-SE rule: `max_depth`; shallower trees are preferred. This proxy
+  does not rank learning rate, vocabulary size, or the total additive model's complexity.
+- `run_gradient_boosting(train)` returns the refitted model, all CV results, training
+  accuracy, fitted tree sizes, descriptive training-stage metrics, five importances, and runtime.
+- Final selected: learning rate 0.3, depth 2, 100 stages, unigrams, `min_df=10`;
+  CV accuracy 0.9133 and training accuracy 0.9733, with 163 features used.
+  The expanded experiment took 133.69 seconds. The final planned search is complete;
+  the remaining learning-rate boundary is documented as a limitation.
+- Decisions and interpretation: `docs/gradient_boosting.md`. Test evaluation is pending.
+
 ## Using the data in a model
 
-```python
-from src.data.cleaning import load_clean_data
-from src.data.split import load_or_create_split, train_test_data
-from src.features.vectorizer import VECTORIZER_GRID, build_vectorizer
-from sklearn.pipeline import Pipeline
-
-data = load_clean_data()
-train, _ = train_test_data(data, load_or_create_split(data))
-X_train, y_train = train["clean_text"], train["label"]
-
-pipeline = Pipeline([("vectorizer", build_vectorizer()), ("model", ...)])
-param_grid = {**VECTORIZER_GRID, "model__...": [...]}
-```
+The single-model example below shows how to load the saved training partition.
 
 - Always use the text column `clean_text` and the saved split; do not create a new split.
 - The vectorizer must stay inside the Pipeline, so that it is fitted on training folds only.
@@ -180,59 +224,20 @@ param_grid = {**VECTORIZER_GRID, "model__...": [...]}
 
 ## Adding a model
 
-`src/models/logistic_regression.py` is the shortest complete example. A new model, e.g.
-`src/models/classification_tree.py`, needs four parts:
+Use `src/models/logistic_regression.py` or `src/models/classification_tree.py` as a complete
+example. Each model defines its Pipeline (vectorizer first, classifier named `model`),
+parameter grid, complexity function, and `run_<model>(train)` returning the refitted
+pipeline plus a dict of report tables. Use `RANDOM_STATE` for every random component.
 
-```python
-from sklearn.pipeline import Pipeline
-from sklearn.tree import DecisionTreeClassifier
+Add its result path to `src/config.py`, call it and save its tables in `main.py`'s
+`train_models`, and register the model in the returned dict. That key becomes its name in
+test results, e.g. `classification_tree` produces `pred_classification_tree` only during
+explicit final evaluation. Document the model in `docs/<model>.md` and the README;
+shared decisions remain in `docs/modelling_setup.md`.
 
-from src.config import RANDOM_STATE
-from src.features.vectorizer import VECTORIZER_GRID, build_vectorizer
-from src.models.tuning import cv_results, selection_summary, tune
-
-# 1. The pipeline: always starts with the shared vectorizer; the classifier step is called "model"
-def build_pipeline():
-    return Pipeline([
-        ("vectorizer", build_vectorizer()),
-        ("model", DecisionTreeClassifier(random_state=RANDOM_STATE)),
-    ])
-
-# 2. The grid: the shared vectorizer grid + the hyperparameters of the model
-PARAM_GRID = {**VECTORIZER_GRID, "model__ccp_alpha": [0.0, 0.001, 0.002, 0.005, 0.01]}
-
-# 3. Complexity for the 1-SE rule: larger = more complex (here: less pruning)
-def complexity(params):
-    return -params["model__ccp_alpha"]
-
-# 4. Tuning, final model and the tables for results/<model>.md
-def run_classification_tree(train):
-    search = tune(build_pipeline(), PARAM_GRID, train, complexity)  # 5-fold CV + 1-SE rule + refit
-    tables = {
-        "Selected hyperparameters (1-SE rule)": selection_summary(search, complexity),
-        "Cross-validation results (10 best settings)": cv_results(search, complexity).head(10),
-        # + a table with the most important features of the final model (Q4)
-    }
-    return search.best_estimator_, tables
-```
-
-Then:
-
-1. Add `CLASSIFICATION_TREE_PATH = ROOT / "results" / "classification_tree.md"` to `src/config.py`.
-2. In `train_models` in `main.py`, call `run_classification_tree(train)`, save its tables with
-   `report(tables, title, CLASSIFICATION_TREE_PATH, note="Decisions and interpretation: ...")`
-   and add the model to the returned dict (e.g. `"classification_tree": model`). The dict key is
-   the model name in all test results (`pred_classification_tree`).
-3. Use `RANDOM_STATE` from `src/config.py` for every random component.
-4. Add the model to *Models* and *Output files* in this README and document its decisions in
-   `docs/<model>.md` (only what concerns this model; shared decisions are in
-   `docs/modelling_setup.md`), in the same style as `docs/naive_bayes.md`.
-
-*Random forest with out-of-bag evaluation.* The assignment allows OOB evaluation instead of CV
-for the random forest. `tune` always uses the shared 5-fold CV; using it keeps all models
-comparable. If OOB is used instead, write the tuning loop in the model file (fit the pipeline
-for every setting with `oob_score=True`, choose the setting, refit on the whole training set),
-return `(final_model, tables)` in the same way, and describe the choice in `docs/random_forest.md`.
+*Random forest validation.* This implementation uses the shared five-fold CV rather than
+the assignment's permitted OOB alternative, so the vocabulary is refitted within each fold
+and model comparisons use the same validation reviews. See `docs/random_forest.md`.
 
 ## Working with a single model
 
@@ -240,18 +245,35 @@ return `(final_model, tables)` in the same way, and describe the choice in `docs
 
 ```python
 from src.data.cleaning import load_clean_data
-from src.data.split import load_or_create_split, train_test_data
+from src.data.split import load_or_create_split
 from src.data.statistics import print_statistics
 from src.models.logistic_regression import run_logistic_regression
 
 data = load_clean_data()
-train, _ = train_test_data(data, load_or_create_split(data))   # never use the test set here
+split = load_or_create_split(data)
+train = data.merge(split[split["split"] == "train"], on="id", validate="one_to_one")
 model, tables = run_logistic_regression(train)
 print_statistics(tables, title="Logistic regression")
 ```
 
-This needs the prepared data and verified split (`data/processed/`, `data/split/`), created by one run of
-`python main.py`.
+To run another model, change the import and function call:
+
+| Model | Module | Function |
+|---|---|---|
+| Naive Bayes | `src.models.naive_bayes` | `run_naive_bayes` |
+| L1 logistic regression | `src.models.logistic_regression` | `run_logistic_regression` |
+| Classification tree | `src.models.classification_tree` | `run_classification_tree` |
+| Random forest | `src.models.random_forest` | `run_random_forest` |
+| Gradient boosting | `src.models.gradient_boosting` | `run_gradient_boosting` |
+
+Each function runs its training/CV search and returns the refitted model and tables.
+It does not evaluate the held-out test set or save reports. Gradient boosting uses
+four CPU workers for CV; no GPU is used.
+
+The example uses the prepared file already in `data/processed/`. If it is missing,
+import `prepare_data` from `main` and use `data = prepare_data()` instead of
+`load_clean_data()`. This runs the same preprocessing without training the other models.
+The saved split is checked by `load_or_create_split` in either case.
 
 ## Evaluation on the test set
 
@@ -334,6 +356,28 @@ the 1-SE threshold and the number of non-zero coefficients, the 10 best settings
 within one SE, CV accuracy by C, the number of non-zero coefficients by C, and the most important
 terms per class (coefficient, odds factor, number of training reviews containing them).
 Used in the *Results* section and the appendix.
+
+### `results/classification_tree.md`
+
+Training-set five-fold CV: selected pruning/vectorizer configuration and 1-SE threshold,
+all 56 settings, accuracy by alpha, refitted tree depth/leaves, a training-only size
+comparison across pruning levels, and the five most important terms with Gini importances.
+No held-out tree evaluation is included.
+
+### `results/random_forest.md`
+
+Training-set five-fold CV: selected forest/vectorizer configuration and 1-SE threshold,
+all 64 settings, best CV accuracy per forest setting, training accuracy, distributions
+of fitted tree depth/leaves/nodes, five impurity importances, and experiment runtime.
+No held-out forest evaluation is included. Runtime depends on the machine and varies between runs.
+
+### `results/gradient_boosting.md`
+
+Training-set five-fold CV: selected configuration and 1-SE threshold, all 128 settings,
+best accuracy per depth/learning-rate pair, refit training accuracy, regression-tree sizes,
+descriptive training performance by stage, five impurity importances, and experiment runtime.
+No held-out boosting evaluation is included. Joblib is already a scikit-learn dependency;
+no additional package installation is required.
 
 ### `results/test_evaluation.md`, `results/test_predictions.csv`
 

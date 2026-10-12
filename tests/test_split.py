@@ -33,9 +33,12 @@ class SplitTests(unittest.TestCase):
 
     def test_invalid_structure_and_partitioning_are_rejected(self):
         duplicate = pd.concat([self.split, self.split.iloc[[0]].assign(split="test")])
-        extra = self.split.copy(); extra.loc[0, "id"] = 100
-        invalid = self.split.copy(); invalid.loc[0, "split"] = "validation"
-        null_id = self.split.copy(); null_id.loc[0, "id"] = None
+        extra = self.split.copy()
+        extra.loc[0, "id"] = 100
+        invalid = self.split.copy()
+        invalid.loc[0, "split"] = "validation"
+        null_id = self.split.copy()
+        null_id.loc[0, "id"] = None
         for split in (duplicate, extra, invalid, null_id, self.split.iloc[1:], self.split.drop(columns="split"), self.split.assign(split="train")):
             with self.subTest(split=split.head().to_dict()), self.assertRaises(ValueError):
                 train_test_data(self.data, split)

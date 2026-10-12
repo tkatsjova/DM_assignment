@@ -57,10 +57,16 @@ class PipelineTests(unittest.TestCase):
             self.assertTrue(all(f"unique{j}" not in terms for j in validation))
 
     def run_main(self, evaluate_test=False, invalid_split=False):
-        data = reviews(); split = make_split(data)
+        data = reviews()
+        split = make_split(data)
         with ExitStack() as stack:
-            mocks = {name: stack.enter_context(patch.object(main, name)) for name in (
-                "prepare_data", "split_data", "save_cleaned_data", "describe_data", "audit", "summarize_bow", "report", "train_models", "evaluate_models")}
+            mocks = {
+                name: stack.enter_context(patch.object(main, name))
+                for name in (
+                    "prepare_data", "split_data", "save_cleaned_data", "describe_data",
+                    "audit", "summarize_bow", "report", "train_models", "evaluate_models",
+                )
+            }
             partition = stack.enter_context(patch.object(main, "train_test_data", wraps=train_test_data))
             mocks["prepare_data"].return_value = data
             mocks["split_data"].return_value = split

@@ -158,7 +158,7 @@ Accuracy by sentiment: negative 0.928, positive 0.900 (250 reviews each).
 *Interpretation.*
 - **Test accuracy agrees with CV** (0.914 vs. 0.903); the difference is well within the
   uncertainty of a 500-review test set (standard error √(0.914 · 0.086 / 500) ≈ 0.013).
-  The tuning did not overfit the validation folds.
+  This agreement is reassuring, but does not rule out overfitting during tuning.
 - **Naive Bayes over-predicts the generated class:** 30 human reviews are labelled generated,
   only 13 generated reviews are missed. Hence the high recall (0.948) and the lower precision
   (0.888). This confirms the sign seen in CV (F1 above accuracy). A plausible reason is the
@@ -182,7 +182,7 @@ Accuracy by sentiment: negative 0.928, positive 0.900 (250 reviews each).
 - [ ] Top-5 terms per direction with the score difference and review counts; interpretation (NB5).
 - [ ] Limitations: artifacts *the in*, *attractions the* (removed names), *com* (Booking.com).
 - [ ] Test results: accuracy 0.914, precision 0.888, recall 0.948, F1 0.917; confusion matrix.
-- [ ] Test accuracy agrees with CV (0.903): no overfitting of the tuning.
+- [ ] Test accuracy agrees with CV (0.903), but this does not rule out overfitting during tuning.
 - [ ] NB over-predicts the generated class (30 false positives vs. 13 false negatives); link
       to the independence assumption (double counting).
 - [ ] Positive reviews harder than negative (0.900 vs. 0.928), as in Ignat et al. (2025).

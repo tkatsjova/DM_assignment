@@ -3,8 +3,11 @@ import argparse
 from src.config import (
     AUDIT_PATH,
     BOW_SUMMARY_PATH,
+    CLASSIFICATION_TREE_PATH,
+    GRADIENT_BOOSTING_PATH,
     LOGISTIC_REGRESSION_PATH,
     NAIVE_BAYES_PATH,
+    RANDOM_FOREST_PATH,
     TEST_EVALUATION_PATH,
     TEST_PREDICTIONS_PATH,
 )
@@ -15,8 +18,11 @@ from src.data.split import load_or_create_split, train_test_data
 from src.data.statistics import compute_statistics, print_statistics, save_statistics
 from src.evaluation.evaluate import evaluate, save_predictions
 from src.features.bow_summary import summarize_bow
+from src.models.classification_tree import run_classification_tree
+from src.models.gradient_boosting import run_gradient_boosting
 from src.models.logistic_regression import run_logistic_regression
 from src.models.naive_bayes import run_naive_bayes
+from src.models.random_forest import run_random_forest
 
 
 def prepare_data():
@@ -56,7 +62,34 @@ def train_models(train):
         LOGISTIC_REGRESSION_PATH,
         note="Decisions and interpretation: `docs/logistic_regression.md`.",
     )
-    return {"naive_bayes": naive_bayes, "logistic_regression": logistic_regression}
+    classification_tree, classification_tree_tables = run_classification_tree(train)
+    report(
+        classification_tree_tables,
+        "Classification tree (training set, 5-fold CV)",
+        CLASSIFICATION_TREE_PATH,
+        note="Decisions and interpretation: `docs/classification_tree.md`.",
+    )
+    random_forest, random_forest_tables = run_random_forest(train)
+    report(
+        random_forest_tables,
+        "Random forest (training set, 5-fold CV)",
+        RANDOM_FOREST_PATH,
+        note="Decisions and interpretation: `docs/random_forest.md`.",
+    )
+    gradient_boosting, gradient_boosting_tables = run_gradient_boosting(train)
+    report(
+        gradient_boosting_tables,
+        "Gradient boosting (training set, 5-fold CV)",
+        GRADIENT_BOOSTING_PATH,
+        note="Decisions and interpretation: `docs/gradient_boosting.md`.",
+    )
+    return {
+        "naive_bayes": naive_bayes,
+        "logistic_regression": logistic_regression,
+        "classification_tree": classification_tree,
+        "random_forest": random_forest,
+        "gradient_boosting": gradient_boosting,
+    }
 
 
 def evaluate_models(models, test):
@@ -89,7 +122,11 @@ def main(evaluate_test=False):
 
 def parse_args(argv=None):
     parser = argparse.ArgumentParser(description="Train review classifiers using training-set CV.")
-    parser.add_argument("--evaluate-test", action="store_true", help="Also evaluate finalized models on the held-out test set and write test results.")
+    parser.add_argument(
+        "--evaluate-test",
+        action="store_true",
+        help="Also evaluate finalized models on the held-out test set and write test results.",
+    )
     return parser.parse_args(argv)
 
 
