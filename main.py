@@ -1,3 +1,5 @@
+import argparse
+
 from src.config import (
     AUDIT_PATH,
     BOW_SUMMARY_PATH,
@@ -9,7 +11,7 @@ from src.config import (
 from src.data.audit import audit
 from src.data.cleaning import clean_data, load_raw_data, save_cleaned_data
 from src.data.preprocessing import add_clean_text
-from src.data.split import make_split, save_split, train_test_data
+from src.data.split import load_or_create_split, train_test_data
 from src.data.statistics import compute_statistics, print_statistics, save_statistics
 from src.evaluation.evaluate import evaluate, save_predictions
 from src.features.bow_summary import summarize_bow
@@ -19,7 +21,6 @@ from src.models.naive_bayes import run_naive_bayes
 
 def prepare_data():
     df = add_clean_text(clean_data(load_raw_data()))
-    save_cleaned_data(df)
     return df
 
 
@@ -30,9 +31,7 @@ def describe_data(df):
 
 
 def split_data(df):
-    split = make_split(df)
-    save_split(split)
-    return split
+    return load_or_create_split(df)
 
 
 def report(tables, title, path, note=None):
@@ -67,11 +66,13 @@ def evaluate_models(models, test):
     report(tables, "Evaluation on the test set", TEST_EVALUATION_PATH)
 
 
-def main():
+def main(evaluate_test=False):
     # 1. Data: English reviews, cleaned text, descriptive statistics, train/test split
     data = prepare_data()
+    split = split_data(data)  # Check split integrity before writing generated artifacts.
+    save_cleaned_data(data)
     describe_data(data)
-    train, test = train_test_data(data, split_data(data))
+    train = data.merge(split[split["split"] == "train"], on="id", validate="one_to_one")
 
     # 2. Evidence for the preprocessing decisions and the bag-of-words representation (training set only)
     report(audit(train), "Preprocessing audit (training set)", AUDIT_PATH)
@@ -80,9 +81,17 @@ def main():
     # 3. Models: hyperparameters tuned with cross-validation on the training set only
     models = train_models(train)
 
-    # 4. Evaluation on the test set: run once, after all models are final
-    evaluate_models(models, test)
+    # 4. Held-out predictions and outcomes require an explicit final-evaluation request.
+    if evaluate_test:
+        _, test = train_test_data(data, split)
+        evaluate_models(models, test)
+
+
+def parse_args(argv=None):
+    parser = argparse.ArgumentParser(description="Train review classifiers using training-set CV.")
+    parser.add_argument("--evaluate-test", action="store_true", help="Also evaluate finalized models on the held-out test set and write test results.")
+    return parser.parse_args(argv)
 
 
 if __name__ == "__main__":
-    main()
+    main(evaluate_test=parse_args().evaluate_test)

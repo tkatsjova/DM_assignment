@@ -7,8 +7,9 @@ def mutual_information(X, y):
 
     # Same estimate as in the course (slides 32-33): the document-term matrix is made binary
     # (term present / absent) and MI is computed from the 2 x 2 table of counts per term.
-    # Written out instead of sklearn's mutual_info_classif, which treats counts as continuous
-    # and is slow on large vocabularies. Usable as score_func in SelectKBest.
+    # Vectorized course formula in bits, usable as score_func in SelectKBest.
+    # sklearn also supports discrete MI (automatic for sparse inputs); on X > 0 with
+    # discrete_features=True it gives the same estimate in nats instead of bits.
     present = (X > 0).astype(np.float64)
     y = np.asarray(y)
     n = len(y)

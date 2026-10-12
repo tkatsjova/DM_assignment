@@ -27,7 +27,18 @@ def _fold_std(cv_results):
     # Sample standard deviation (ddof=1) of the accuracy over the folds, for every setting.
 
     folds = np.array([cv_results[f"split{i}_test_accuracy"] for i in range(CV_FOLDS)])
-    return folds.std(axis=0, ddof=1)
+    with np.errstate(invalid="ignore"):
+        return folds.std(axis=0, ddof=1)
+
+
+def _selection_values(cv_results, complexity):
+    accuracy = _accuracy(cv_results)
+    cost = np.array([complexity(p) for p in cv_results["params"]], dtype=float)
+    folds = np.array([cv_results[f"split{i}_test_accuracy"] for i in range(CV_FOLDS)])
+    valid = np.isfinite(accuracy) & np.isfinite(cost) & np.isfinite(folds).all(axis=0)
+    if not valid.any():
+        raise ValueError("No valid cross-validation candidates: mean accuracy, every fold accuracy and complexity must be finite.")
+    return accuracy, cost, valid
 
 
 def _simplest(indices, cost, accuracy):
@@ -38,9 +49,8 @@ def _simplest(indices, cost, accuracy):
 def _one_se_threshold(cv_results, complexity):
     # Best CV accuracy, its standard error and the 1-SE threshold.
 
-    accuracy = _accuracy(cv_results)
-    cost = np.array([complexity(p) for p in cv_results["params"]])
-    best = _simplest(np.flatnonzero(accuracy == accuracy.max()), cost, accuracy)
+    accuracy, cost, valid = _selection_values(cv_results, complexity)
+    best = _simplest(np.flatnonzero(valid & (accuracy == accuracy[valid].max())), cost, accuracy)
     # standard error of the mean over the folds, as in cv.glmnet: sample std / sqrt(K)
     se = _fold_std(cv_results)[best] / np.sqrt(CV_FOLDS)
     return best, se, accuracy[best] - se
@@ -50,10 +60,9 @@ def one_se_rule(complexity):
     # Refit strategy for GridSearchCV: simplest setting within 1 SE of the best CV accuracy
 
     def select(cv_results):
-        accuracy = _accuracy(cv_results)
-        cost = np.array([complexity(p) for p in cv_results["params"]])
+        accuracy, cost, valid = _selection_values(cv_results, complexity)
         _, _, threshold = _one_se_threshold(cv_results, complexity)
-        return _simplest(np.flatnonzero(accuracy >= threshold), cost, accuracy)
+        return _simplest(np.flatnonzero(valid & (accuracy >= threshold)), cost, accuracy)
 
     return select
 
@@ -72,7 +81,7 @@ def cv_results(search, complexity):
     # CV accuracy and F1 (mean and std over the folds) for every setting, best accuracy first.
 
     results = search.cv_results_
-    accuracy = _accuracy(results)
+    accuracy, _, valid = _selection_values(results, complexity)
     _, _, threshold = _one_se_threshold(results, complexity)
     params = pd.DataFrame(list(results["params"]))
     params.columns = [c.split("__")[-1] for c in params.columns]
@@ -81,10 +90,10 @@ def cv_results(search, complexity):
         accuracy=accuracy,
         accuracy_std=_fold_std(results),
         f1=results["mean_test_f1"],
-        within_1se=accuracy >= threshold,
+        within_1se=valid & (accuracy >= threshold),
         selected=np.arange(len(params)) == search.best_index_,
     )
-    table["rank"] = pd.Series(accuracy).rank(method="min", ascending=False).astype(int)
+    table["rank"] = pd.Series(np.where(valid, accuracy, np.nan)).rank(method="min", ascending=False).astype("Int64")
     return table.sort_values(["rank", "complexity"]).round(4).set_index("rank")
 
 
@@ -92,7 +101,7 @@ def selection_summary(search, complexity):
     # The chosen setting and how it was chosen
     results = search.cv_results_
     best, se, threshold = _one_se_threshold(results, complexity)
-    accuracy = _accuracy(results)
+    accuracy, _, valid = _selection_values(results, complexity)
     chosen = search.best_index_
     rows = {k.split("__")[-1]: str(v) for k, v in search.best_params_.items()}
     rows.update(
@@ -100,7 +109,7 @@ def selection_summary(search, complexity):
             "complexity": complexity(results["params"][chosen]),
             "CV accuracy (chosen)": f"{accuracy[chosen]:.4f}",
             "CV accuracy (best)": f"{accuracy[best]:.4f}",
-            "settings with the best accuracy": int(np.sum(accuracy == accuracy[best])),
+            "settings with the best accuracy": int(np.sum(valid & (accuracy == accuracy[best]))),
             "standard error (best)": f"{se:.4f}",
             "1-SE threshold": f"{threshold:.4f}",
         }

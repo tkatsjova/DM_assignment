@@ -40,8 +40,11 @@ The assignment notes that feature selection, in addition to sparse-term removal,
 improve naive Bayes. We select the top-k terms by mutual information between the presence
 of a term and the class, as in the course (slides 28–33, 42–44): the document-term matrix
 is made binary and MI is computed from the 2 × 2 table of each term. MI is written out in
-`src/features/selection.py` (scikit-learn's `mutual_info_classif` treats counts as
-continuous); on the example of the lecture (the word *bad*) it gives 0.0557 bits, as on
+`src/features/selection.py` as a vectorized implementation of the course formula in bits.
+Scikit-learn also supports discrete MI: `mutual_info_classif(X > 0, y,
+discrete_features=True)` computes the same estimate in nats (divide by ln(2) for bits);
+sparse inputs are automatically treated as discrete. On the example of the lecture
+(the word *bad*) our implementation gives 0.0557 bits, as on
 slide 33. MI uses the class labels, so the selection is part of the Pipeline and is
 recomputed in every CV fold (no leakage). With `k = all` no terms are removed by MI.
 

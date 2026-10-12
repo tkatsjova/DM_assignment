@@ -5,7 +5,7 @@ bag-of-words models. Data: MAiDE-up (Ignat et al., 2025), English reviews only.
 
 ## Start
 
-1. Run the pipeline once (see *How to run*) — it creates all data files and tables.
+1. Run the training pipeline (see *How to run*) — it verifies the saved split and creates training tables.
 2. Read `results/data_statistics.md` and `results/bow_summary.md` to get to know the data.
 3. Read the overview tables in `docs/` to see what was decided and why (see *Documentation*).
 4. To add a model, follow *Adding a model* below.
@@ -20,21 +20,58 @@ python main.py
 ```
 
 The raw data file `all_data.csv` (from https://github.com/MichiganNLP/multilingual_reviews_deception)
-must be placed in `data/raw/`. `main.py` runs all steps and prints every table to the console.
+must be placed in `data/raw/`. The default command runs data preparation and training-set
+CV, and prints descriptive/training tables. It does **not** predict on the held-out test
+set, report test performance, or write the test evaluation/prediction files.
+Full-dataset descriptive statistics remain descriptive only; they must not guide modelling.
+
+To deliberately reproduce the completed models' test results, or evaluate additional models
+after their training-only development is final:
+
+```bash
+python main.py --evaluate-test
+```
+
+This opt-in command also writes `results/test_evaluation.md` and `results/test_predictions.csv`.
+Do not use it while tuning or choosing models. Naive Bayes and logistic regression are already
+finalized; their hyperparameters and preprocessing remain unchanged.
+
+### Split protection
+
+Normal runs reuse `data/split/train_test_split.csv` without rewriting it. Basic checks
+verify unique/non-missing IDs, complete coverage, disjoint partitions, valid labels,
+the 75/25 ratio, and class × sentiment balance. An invalid split stops execution before
+generated files are written. If the split is absent, it is created with seed 42.
+
+Keep the submitted split and original raw dataset, including its row order, to reproduce
+the experiments. Review IDs are assigned during preparation; the checks validate split
+structure rather than changes to review content.
+
+### Automated checks
+
+The lightweight tests use Python's standard-library `unittest`; no extra dependency is needed:
+
+```bash
+python -B -m unittest discover -s tests -v
+```
+
+They use synthetic reviews and temporary files, including a mocked final-evaluation dispatch.
+They do not run the completed experiment grids, evaluate the real test set, or overwrite
+recorded results.
 
 ## Pipeline
 
-`main()` in `main.py` runs all steps in order:
+`main()` in `main.py` runs the following steps; step 7 requires `--evaluate-test`:
 
 | Step | Function in `main.py` | Code | Output |
 |---|---|---|---|
-| 1. Select English reviews, clean, normalize text | `prepare_data` | `src/data/cleaning.py`, `src/data/preprocessing.py` | `data/processed/english_reviews.csv` |
-| 2. Descriptive statistics (all reviews) | `describe_data` | `src/data/statistics.py` | `results/data_statistics.md` |
-| 3. Stratified train/test split | `split_data` | `src/data/split.py` | `data/split/train_test_split.csv` |
+| 1. Select English reviews, clean, normalize text | `prepare_data` | `src/data/cleaning.py`, `src/data/preprocessing.py` | prepared reviews in memory |
+| 2. Verify and reuse the split, then save prepared data | `split_data` | `src/data/split.py` | verified split; `data/processed/english_reviews.csv` |
+| 3. Descriptive statistics (all reviews) | `describe_data` | `src/data/statistics.py` | `results/data_statistics.md` |
 | 4. Evidence for preprocessing decisions (training set) | `audit` | `src/data/audit.py` | `results/preprocessing_audit.md` |
 | 5. Bag-of-words overview (training set) | `summarize_bow` | `src/features/bow_summary.py` | `results/bow_summary.md` |
 | 6. Tune the models with CV, refit on the whole training set | `train_models` | `src/models/` | `results/<model>.md` |
-| 7. Evaluate the final models on the test set | `evaluate_models` | `src/evaluation/evaluate.py` | `results/test_evaluation.md`, `results/test_predictions.csv` |
+| 7. Evaluate the final models on the test set (opt-in) | `evaluate_models` | `src/evaluation/evaluate.py` | `results/test_evaluation.md`, `results/test_predictions.csv` |
 
 ### Training and evaluation of the models (steps 6–7)
 
@@ -48,7 +85,7 @@ data/processed/english_reviews.csv + data/split/train_test_split.csv
         │                              refit on all 1500 reviews → final model
         │                              → results/<model>.md (CV tables, important features)
         │
-        └── test set (500) ───────► evaluate_models (once, all final models):
+        └── test set (500) ───────► --evaluate-test → evaluate_models (final models):
                                        predictions → accuracy, precision, recall, F1,
                                        confusion matrices, accuracy by sentiment
                                        → results/test_evaluation.md
@@ -124,11 +161,12 @@ show the index of every DataFrame as its first column(s).
 
 ```python
 from src.data.cleaning import load_clean_data
-from src.data.split import load_split, train_test_data
+from src.data.split import load_or_create_split, train_test_data
 from src.features.vectorizer import VECTORIZER_GRID, build_vectorizer
 from sklearn.pipeline import Pipeline
 
-train, test = train_test_data(load_clean_data(), load_split())
+data = load_clean_data()
+train, _ = train_test_data(data, load_or_create_split(data))
 X_train, y_train = train["clean_text"], train["label"]
 
 pipeline = Pipeline([("vectorizer", build_vectorizer()), ("model", ...)])
@@ -198,29 +236,30 @@ return `(final_model, tables)` in the same way, and describe the choice in `docs
 
 ## Working with a single model
 
-`python main.py` runs everything (about 1.5 minutes). To work on one model interactively:
+`python main.py` runs preparation and training without test evaluation. To work on one model interactively:
 
 ```python
 from src.data.cleaning import load_clean_data
-from src.data.split import load_split, train_test_data
+from src.data.split import load_or_create_split, train_test_data
 from src.data.statistics import print_statistics
 from src.models.logistic_regression import run_logistic_regression
 
-train, _ = train_test_data(load_clean_data(), load_split())   # never use the test set here
+data = load_clean_data()
+train, _ = train_test_data(data, load_or_create_split(data))   # never use the test set here
 model, tables = run_logistic_regression(train)
 print_statistics(tables, title="Logistic regression")
 ```
 
-This needs the files of steps 1 and 3 (`data/processed/`, `data/split/`), created by one run of
+This needs the prepared data and verified split (`data/processed/`, `data/split/`), created by one run of
 `python main.py`.
 
-## Evaluation on the test set (for part C)
+## Evaluation on the test set
 
-1. Step 7 (`evaluate_models(models, test)` in `main()`) is enabled: every run of `python main.py`
-   evaluates all models returned by `train_models`. Naive Bayes and logistic regression are final
-   and have been evaluated; they must not be changed any more (the pipeline is deterministic, so a
-   rerun reproduces the same test results). A new model is tuned on the training set only and
-   added to `train_models` once it is final; its test results then appear in the same files.
+1. Step 7 is disabled by default. `python main.py --evaluate-test` explicitly evaluates all
+   models returned by `train_models`. Naive Bayes and logistic regression are final and have
+   already been evaluated; preserve their settings. Tune additional models on training data
+   only, then deliberately run final evaluation once their settings are frozen. Deterministic
+   reproduction of existing test results is allowed; using them to choose settings is not.
 2. `results/test_evaluation.md`: accuracy, precision, recall, F1 of every model (positive class:
    generated), confusion matrices, accuracy on positive and negative reviews (Q3).
 3. `results/test_predictions.csv`: one row per test review with `id, y_true, sentiment` and a column
@@ -263,6 +302,7 @@ Load it with `src.data.cleaning.load_clean_data()`, so that empty text parts sta
 
 Columns `id` and `split` (`train` / `test`). 75% / 25% (1500 / 500 reviews),
 stratified on class × sentiment (375 / 125 reviews per group), `random_state = 42`.
+Existing split assignments are reused and never overwritten.
 
 ### `results/data_statistics.md`
 

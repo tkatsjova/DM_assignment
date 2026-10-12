@@ -18,7 +18,7 @@ Code: `src/models/tuning.py` (tuning), `src/evaluation/evaluate.py` (test evalua
 | M2 | Tuning criterion | CV accuracy (F1 recorded as well) | `tuning.py` |
 | M3 | Selection rule | one-standard-error rule | `tuning.py` |
 | M4 | Final model | refitted on all 1500 training reviews with the selected setting | `tuning.py` |
-| M5 | Test set | used once, for the five final models | `main.py`, `evaluate.py` |
+| M5 | Test set | explicit `--evaluate-test` only, for finalized models | `main.py`, `evaluate.py` |
 | M6 | Test metrics | accuracy, precision, recall, F1 (positive class: generated) | `evaluate.py` |
 
 The training and evaluation pipeline and the shared code are described in `README.md`.
@@ -81,8 +81,11 @@ the feature importances.
 
 ## M5 — The test set is used once
 
-The 500 test reviews are used only to evaluate the five final models, after all tuning
-is finished (step 4 in `main()`). The test set is transformed with the vocabulary and the
+Held-out evaluation is disabled during ordinary training. `python main.py --evaluate-test`
+explicitly evaluates finalized models after training-only tuning is finished (step 4 in `main()`).
+Naive Bayes and logistic regression have already been evaluated; their settings remain frozen.
+Their existing results can be deliberately reproduced, but must not guide subsequent tuning.
+The test set is transformed with the vocabulary and the
 selected terms learned on the training set; nothing is refitted on it.
 
 ## M6 — Test metrics
