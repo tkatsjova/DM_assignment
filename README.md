@@ -39,8 +39,9 @@ python main.py --evaluate-test
 ```
 
 This opt-in command also writes `results/test_evaluation.md` and `results/test_predictions.csv`.
-Do not use it while tuning or choosing models. Naive Bayes and logistic regression are already
-finalized; their hyperparameters and preprocessing remain unchanged.
+It also produces the statistical comparisons and consolidated training-based feature tables.
+All five model choices are now frozen. The command reproduces their committed training
+searches and refits before evaluation; test outcomes must not guide new model choices.
 
 ### Split protection
 
@@ -77,7 +78,7 @@ recorded results.
 | 4. Evidence for preprocessing decisions (training set) | `audit` | `src/data/audit.py` | `results/preprocessing_audit.md` |
 | 5. Bag-of-words overview (training set) | `summarize_bow` | `src/features/bow_summary.py` | `results/bow_summary.md` |
 | 6. Tune the models with CV, refit on the whole training set | `train_models` | `src/models/` | `results/<model>.md` |
-| 7. Evaluate the final models on the test set (opt-in) | `evaluate_models` | `src/evaluation/evaluate.py` | `results/test_evaluation.md`, `results/test_predictions.csv` |
+| 7. Evaluate the final models and answer Q1–Q4 (opt-in) | `evaluate_models` | `src/evaluation/evaluate.py`, `src/evaluation/statistical_analysis.py` | test metrics/predictions, statistical comparisons, feature summary |
 
 ### Training and evaluation of the models (steps 6–7)
 
@@ -129,6 +130,8 @@ points to include in the report.
 | | `selection_summary(search, complexity)` | chosen setting, best accuracy, SE and threshold |
 | `src/evaluation/evaluate.py` | `evaluate(models, data)` | predictions and tables: metrics, confusion matrices, accuracy by sentiment |
 | | `save_predictions(predictions, path)` | predictions per review for McNemar's test |
+| `src/evaluation/statistical_analysis.py` | `statistical_tables(predictions)` | the three planned McNemar tests and random-forest sentiment Fisher test |
+| | `save_feature_summary()` | copies the important-feature tables from the training reports |
 | `src/data/statistics.py` | `print_statistics`, `save_statistics` | print tables to the console and save them as Markdown |
 
 `complexity` is a function that receives one parameter setting of the grid, as a dict with the
@@ -176,7 +179,7 @@ show the index of every DataFrame as its first column(s).
   settings, all CV results, tree depth/leaves, and five Gini feature importances.
 - Selected: `ccp_alpha=0.002`, uni+bigrams, `min_df=5`, CV accuracy 0.8040;
   depth 17 and 61 leaves after refitting on all training reviews.
-- Decisions and interpretation: `docs/classification_tree.md`. Test evaluation is pending.
+- Decisions and interpretation: `docs/classification_tree.md`. Final evaluation: `results/test_evaluation.md`.
 
 ### Random forest — `src/models/random_forest.py`
 
@@ -192,7 +195,7 @@ show the index of every DataFrame as its first column(s).
 - Selected: 300 trees, log2 features, leaf size 1, uni+bigrams, `min_df=10`;
   CV accuracy 0.9207 and training accuracy 1.0000. The full RF experiment took about 4m 22s
   on the recorded machine; runtimes vary.
-- Decisions and interpretation: `docs/random_forest.md`. Test evaluation is pending.
+- Decisions and interpretation: `docs/random_forest.md`. Final evaluation: `results/test_evaluation.md`.
 
 ### Gradient boosting — `src/models/gradient_boosting.py`
 
@@ -211,7 +214,7 @@ show the index of every DataFrame as its first column(s).
   CV accuracy 0.9133 and training accuracy 0.9733, with 163 features used.
   The expanded experiment took 133.69 seconds. The final planned search is complete;
   the remaining learning-rate boundary is documented as a limitation.
-- Decisions and interpretation: `docs/gradient_boosting.md`. Test evaluation is pending.
+- Decisions and interpretation: `docs/gradient_boosting.md`. Final evaluation: `results/test_evaluation.md`.
 
 ## Using the data in a model
 
@@ -277,27 +280,50 @@ The saved split is checked by `load_or_create_split` in either case.
 
 ## Evaluation on the test set
 
-1. Step 7 is disabled by default. `python main.py --evaluate-test` explicitly evaluates all
-   models returned by `train_models`. Naive Bayes and logistic regression are final and have
-   already been evaluated; preserve their settings. Tune additional models on training data
-   only, then deliberately run final evaluation once their settings are frozen. Deterministic
-   reproduction of existing test results is allowed; using them to choose settings is not.
+1. Step 7 is disabled by default. `python main.py --evaluate-test` reproduces all five
+   frozen models and evaluates them on the same saved 500-review test partition.
+   Reproducing results is allowed; using test outcomes to choose settings is not.
 2. `results/test_evaluation.md`: accuracy, precision, recall, F1 of every model (positive class:
    generated), confusion matrices, accuracy on positive and negative reviews (Q3).
-3. `results/test_predictions.csv`: one row per test review with `id, y_true, sentiment` and a column
-   `pred_<model>` for every model. The 2 × 2 table for McNemar's test of two models:
+3. `results/test_predictions.csv`: one row per test review with `id, y_true, sentiment` and
+   a `pred_<model>` column for each classifier. Before overwriting an existing file, the
+   pipeline aligns reviews by ID and compares the old and new NB/LR predictions; counts
+   of changed predictions are saved in the evaluation report.
+4. `results/statistical_comparisons.md`: full paired correctness tables and exact two-sided
+   McNemar tests for NB vs LR, tree vs forest, and tree vs boosting; Fisher's exact test
+   for forest accuracy on positive vs negative sentiment reviews. Class label 1 means
+   generated; positive review sentiment is a different variable.
+5. `results/feature_summary.md`: five important terms per direction for NB/LR and five
+   highest importances for each tree model, copied from the training reports.
 
-```python
-import pandas as pd
+The exact McNemar test uses only discordant reviews: under equal marginal accuracy,
+the number correct only for the first model follows Binomial(b+c, 0.5). We use
+`scipy.stats.binomtest(..., alternative="two-sided")`; no discordances gives p=1.
+Fisher's test uses the disjoint sentiment groups' correct/incorrect counts and
+`scipy.stats.fisher_exact(..., alternative="two-sided")`, with its default exact
+probability-based definition. Both test methods are described by the
+[SciPy binomial](https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.binomtest.html)
+and [Fisher](https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.fisher_exact.html)
+documentation.
 
-p = pd.read_csv("results/test_predictions.csv")
-correct_nb = p["pred_naive_bayes"] == p["y_true"]
-correct_lr = p["pred_logistic_regression"] == p["y_true"]
-table = pd.crosstab(correct_lr, correct_nb, rownames=["LR correct"], colnames=["NB correct"])
-```
+All four planned tests use nominal per-test alpha=0.01, without multiplicity adjustment.
+This does not guarantee family-wide error control. Nonsignificance is not equivalence;
+signed model scores and unsigned impurity importances describe predictive associations,
+not causal effects. The tests assume independent reviews, which may be imperfect when
+several reviews come from the same hotel. Final inference concerns this dataset and split.
+The comparisons concern complete tuned pipelines with different vocabularies, so gains
+cannot be attributed solely to the ensemble method.
 
-The same file gives the accuracy of the random forest on positive and negative reviews (Q3):
-group by `sentiment` and compare `pred_random_forest` with `y_true`.
+### Commands for reproducing the reported results
+
+Run from the project root with the Python environment described above:
+
+| Command | Results reproduced |
+|---|---|
+| `python main.py` | Data statistics, preprocessing audit, bag-of-words summary, and all five training/CV reports |
+| `python main.py --evaluate-test` | Everything above, plus all final test metrics, predictions, Q1–Q3 statistical comparisons and Q4 feature summary |
+| `python -m src.evaluation.statistical_analysis` | Q1–Q3 from saved test predictions and Q4 from saved training reports; no model fitting or prediction |
+| `python -B -m unittest discover -s tests -v` | Lightweight automated checks using synthetic data |
 
 ## Output files
 
@@ -384,6 +410,13 @@ no additional package installation is required.
 Performance of the final models on the test set (accuracy, precision, recall, F1),
 confusion matrices, accuracy on positive and negative reviews, and the predictions per
 review: `id, y_true, sentiment, pred_<model>` (input for McNemar's test).
+
+### `results/statistical_comparisons.md`, `results/feature_summary.md`
+
+The statistical report contains the three planned paired correctness tables,
+discordant counts, exact p-values and decisions at alpha=0.01, plus the forest's
+sentiment-group counts, accuracies and difference. The feature summary preserves
+the recorded training-based scores and review counts for all five classifiers.
 
 ## Requirements
 

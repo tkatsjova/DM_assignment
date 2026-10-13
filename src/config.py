@@ -21,6 +21,8 @@ RANDOM_FOREST_PATH = ROOT / "results" / "random_forest.md"
 GRADIENT_BOOSTING_PATH = ROOT / "results" / "gradient_boosting.md"
 TEST_EVALUATION_PATH = ROOT / "results" / "test_evaluation.md"
 TEST_PREDICTIONS_PATH = ROOT / "results" / "test_predictions.csv"
+STATISTICAL_COMPARISONS_PATH = ROOT / "results" / "statistical_comparisons.md"
+FEATURE_SUMMARY_PATH = ROOT / "results" / "feature_summary.md"
 
 LANGUAGE = "English"
 

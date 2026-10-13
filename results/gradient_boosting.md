@@ -1,6 +1,6 @@
 # Gradient boosting (training set, 5-fold CV)
 
-Decisions and interpretation: `docs/gradient_boosting.md`. Final expanded search; 100 stages fixed.
+Decisions and interpretation: `docs/gradient_boosting.md`.
 
 ## Selected hyperparameters (1-SE rule, complexity = max_depth)
 
@@ -24,7 +24,7 @@ Decisions and interpretation: `docs/gradient_boosting.md`. Final expanded search
 | vocabulary size | 829 |
 | features used across stages | 163 |
 | CV workers | 4 |
-| experiment seconds (CV, refit and summaries) | 133.69 |
+| experiment seconds (CV, refit and summaries) | 132.30 |
 
 ## Cross-validation results (all settings)
 

@@ -23,7 +23,7 @@ Decisions and interpretation: `docs/random_forest.md`.
 | features used across forest | 1756 |
 | nominal features per split | 10 |
 | total nodes across forest | 262660 |
-| experiment seconds (CV, refit and summaries) | 262.45 |
+| experiment seconds (CV, refit and summaries) | 207.00 |
 
 ## Cross-validation results (all settings)
 

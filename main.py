@@ -1,13 +1,17 @@
 import argparse
 
+import pandas as pd
+
 from src.config import (
     AUDIT_PATH,
     BOW_SUMMARY_PATH,
     CLASSIFICATION_TREE_PATH,
     GRADIENT_BOOSTING_PATH,
+    FEATURE_SUMMARY_PATH,
     LOGISTIC_REGRESSION_PATH,
     NAIVE_BAYES_PATH,
     RANDOM_FOREST_PATH,
+    STATISTICAL_COMPARISONS_PATH,
     TEST_EVALUATION_PATH,
     TEST_PREDICTIONS_PATH,
 )
@@ -17,6 +21,12 @@ from src.data.preprocessing import add_clean_text
 from src.data.split import load_or_create_split, train_test_data
 from src.data.statistics import compute_statistics, print_statistics, save_statistics
 from src.evaluation.evaluate import evaluate, save_predictions
+from src.evaluation.statistical_analysis import (
+    METHOD_NOTE,
+    prediction_consistency,
+    save_feature_summary,
+    statistical_tables,
+)
 from src.features.bow_summary import summarize_bow
 from src.models.classification_tree import run_classification_tree
 from src.models.gradient_boosting import run_gradient_boosting
@@ -95,8 +105,13 @@ def train_models(train):
 def evaluate_models(models, test):
     # Evaluate the final models on the test set and save the predictions for McNemar's test
     predictions, tables = evaluate(models, test)
+    if TEST_PREDICTIONS_PATH.exists():
+        previous = pd.read_csv(TEST_PREDICTIONS_PATH)
+        tables["Prediction consistency with previous saved NB/LR predictions"] = prediction_consistency(previous, predictions)
     save_predictions(predictions, TEST_PREDICTIONS_PATH)
     report(tables, "Evaluation on the test set", TEST_EVALUATION_PATH)
+    report(statistical_tables(predictions), "Final statistical comparisons", STATISTICAL_COMPARISONS_PATH, note=METHOD_NOTE)
+    save_feature_summary(FEATURE_SUMMARY_PATH)
 
 
 def main(evaluate_test=False):
