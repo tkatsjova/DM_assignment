@@ -95,8 +95,8 @@ Accuracy by the number of selected terms (best vectorizer setting per k):
   (2011); word pairs capture phrasing (*service was*, *told us*) that single words do not.
 - **`min_df` hardly matters** among the best settings (1–10 documents).
 - The CV F1 score (generated = positive class) is slightly higher than the accuracy, a first
-  sign that the model detects generated reviews more easily than human ones — to be checked
-  with precision and recall on the test set.
+  sign that the model detects generated reviews more easily than human ones, consistent
+  with the precision and recall in the completed [test evaluation](../results/test_evaluation.md).
 
 ---
 

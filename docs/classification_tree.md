@@ -5,8 +5,8 @@ Shared preprocessing, CV folds and selection rules remain those of
 `docs/preprocessing_decisions.md` and `docs/modelling_setup.md`.
 
 Pipeline: `vectorizer → DecisionTreeClassifier(criterion="gini", random_state=42)`.
-Only the 1500 saved training reviews were used in this experiment. The held-out test
-reviews were excluded when loading the prepared data, and no test evaluation was performed.
+Only the 1500 saved training reviews were used for tuning and refitting. The held-out
+reviews were excluded from this stage and evaluated after the model settings were frozen.
 
 ## Methodological decisions
 
@@ -103,9 +103,11 @@ associations; deeper decisions depend on combinations of terms and count thresho
 - The grid is coarse and does not exhaust every possible pruning subtree. Its purpose
   is a reproducible, justified comparison rather than maximum attainable accuracy.
 - Report Gini, the grid rationale, fold-local fitting, the 1-SE threshold, final size,
-  the five importances and their limitations. Compare the single tree with ensembles
-  using the assignment's prescribed final evaluation/statistical tests once those models
-  are completed. Final test evaluation remains pending.
+  the five importances and their limitations. The completed
+  [test evaluation](../results/test_evaluation.md) and
+  [statistical comparisons](../results/statistical_comparisons.md) compare the tree
+  with the ensembles. All five models' training-based features are in the
+  [feature summary](../results/feature_summary.md).
 
 ## References
 

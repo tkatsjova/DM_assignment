@@ -38,8 +38,8 @@ See the [parameter documentation](https://scikit-learn.org/stable/modules/genera
 Five-fold stratified CV is used instead of the assignment's permitted OOB alternative.
 This keeps validation reviews identical across classifiers and learns vocabulary and
 sparse-term removal within each fold. Each fit uses 1200 training reviews; the selected
-Pipeline is refitted using all 1500 training reviews. No held-out test evaluation or
-OOB performance estimate is used in tuning or reporting.
+Pipeline is refitted using all 1500 training reviews. Held-out test outcomes were not
+used for tuning, and OOB evaluation was disabled.
 
 The 1-SE complexity function is `−min_samples_leaf`, preferring the larger minimum leaf
 size among settings within one SE of the best mean CV accuracy. Other parameters tie on
@@ -104,7 +104,7 @@ The selected forest has higher CV accuracy than the selected single tree (0.9207
 0.8040). This is a descriptive comparison of independently tuned pipelines: the tree
 uses `min_df=5`, whereas the forest uses 10. It is consistent with an ensemble advantage,
 but does not isolate averaging from vectorizer differences or establish statistical
-significance. The final model comparisons remain pending.
+significance.
 
 ## Five most important features
 
@@ -144,9 +144,11 @@ across many randomized trees and correlated terms.
   it does not measure variation across seeds or independently sampled datasets.
 - Review length, residual generation artifacts and the common review-level split across
   represented hotels remain limitations of the dataset/setup.
-- CV comparison with the single tree is descriptive. The assignment's McNemar comparison
-  and positive/negative sentiment analysis require final test predictions after models
-  are finalized; those analyses remain pending.
+- CV comparison with the single tree is descriptive. The completed McNemar comparison
+  and positive/negative sentiment analysis are in the
+  [statistical comparisons](../results/statistical_comparisons.md), alongside the
+  [final test evaluation](../results/test_evaluation.md). Training-based features
+  for all five models are consolidated in the [feature summary](../results/feature_summary.md).
 
 ## References
 

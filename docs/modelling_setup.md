@@ -80,12 +80,12 @@ The selected setting is refitted on all 1500 training reviews (`GridSearchCV` wi
 1-SE rule as refit strategy). This is the model evaluated on the test set and used for
 the feature importances.
 
-## M5 — The test set is used once
+## M5 — Final evaluation with frozen models
 
 Held-out evaluation is disabled during ordinary training. `python main.py --evaluate-test`
 explicitly evaluates finalized models after training-only tuning is finished (step 4 in `main()`).
-Naive Bayes and logistic regression have already been evaluated; their settings remain frozen.
-Their existing results can be deliberately reproduced, but must not guide subsequent tuning.
+All five classifiers have completed final evaluation; their settings remain frozen.
+The results can be reproduced, but must not guide new model choices.
 The test set is transformed with the vocabulary and the
 selected terms learned on the training set; nothing is refitted on it.
 
@@ -96,6 +96,10 @@ class, plus the confusion matrix and the accuracy on positive and negative revie
 separately. The predictions of all models are saved per review
 (`results/test_predictions.csv`: `id, y_true, sentiment, pred_<model>`) as input for
 McNemar's test and for the positive vs. negative comparison.
+
+The completed results are in [test evaluation](../results/test_evaluation.md),
+[statistical comparisons](../results/statistical_comparisons.md) and the
+consolidated training-based [feature summary](../results/feature_summary.md).
 
 ---
 
@@ -132,7 +136,8 @@ Correct (1) and incorrect (0) test predictions of the two models (500 reviews, f
 
 McNemar's test only uses the 64 reviews on which the models disagree: 33 are classified
 correctly by NB only, 31 by LR only. The exact (binomial) version of the test, as in the course
-(slide 43), gives p ≈ 0.90, far above α = 0.01 (to be confirmed by the test script of part C).
+(slide 43), gives p ≈ 0.90, far above α = 0.01, confirmed in
+`results/statistical_comparisons.md`.
 
 *Interpretation.*
 - **No significant difference in accuracy** between the generative and the discriminative

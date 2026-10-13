@@ -39,7 +39,8 @@ The shared five-fold stratified CV uses 1200 training and 300 validation reviews
 fold. Vocabulary and document-frequency filtering are learned inside each training
 fold. Accuracy selects the model; F1 is also reported with generated reviews as the
 positive class. The selected Pipeline is refitted on all 1500 training reviews.
-No held-out test outcomes were used or evaluated.
+No held-out test outcomes were used during tuning; final evaluation followed after
+the settings were frozen.
 
 The 1-SE rule defines complexity as `max_depth`: shallower trees are preferred among
 candidates within one SE of the best mean CV accuracy. Equal depths are resolved by
@@ -177,7 +178,8 @@ These mechanisms differ even though all three use trees. Boosting need not outpe
 the forest: selected CV accuracy here is 0.9133 versus the forest's 0.9207. Their
 vectorizers also differ. This is a descriptive comparison of tuned pipelines, not
 a controlled comparison of ensemble mechanisms or evidence of statistical significance.
-The assignment's required final model comparisons remain pending.
+The completed [test evaluation](../results/test_evaluation.md) and
+[statistical comparisons](../results/statistical_comparisons.md) report the final comparisons.
 
 - The 6.00-point training/CV gap indicates optimistic apparent performance and warrants
   discussion of overfitting. Selected CV accuracy also benefits from selection on these
@@ -189,14 +191,16 @@ The assignment's required final model comparisons remain pending.
   stage budget. High training accuracy does not support a simple underfitting claim.
 - The extension was chosen after inspecting the initial CV results. Reusing the same
   folds for this adaptive development increases selection optimism; it does not create
-  independent validation evidence. The untouched test set remains reserved for the
-  final evaluation after all settings are frozen.
+  independent validation evidence. The test set was kept separate during tuning
+  and used for final evaluation after all settings were frozen.
 - A fixed seed gives reproducibility, not uncertainty across seeds or samples.
   Review length, generation artifacts and the review-level split across represented
   hotels remain limitations of the shared dataset and preprocessing.
 
 This completes the team's final planned hyperparameter search. The configuration
-above is the final training-selected model for review before final evaluation.
+above is the frozen model used in the completed final evaluation. Its training-based
+features, alongside those of the other classifiers, are in the
+[feature summary](../results/feature_summary.md).
 The remaining rate boundary is recorded as a limitation; no further grid extension
 is proposed or performed.
 
@@ -207,8 +211,8 @@ is proposed or performed.
 - Report the selected configuration, CV and apparent training scores, tree sizes,
   unsigned importance interpretation and boundary limitations.
 - Explain the distinction between classification-tree splits, forest averaging and
-  sequential regression-tree boosting; reserve statistical comparisons for the
-  planned final evaluation.
+  sequential regression-tree boosting, using the completed statistical comparisons
+  linked above.
 
 Reference: Friedman, J. H. (2001). Greedy Function Approximation: A Gradient Boosting
 Machine. *The Annals of Statistics*, 29(5), 1189–1232.

@@ -25,8 +25,9 @@ python main.py
 Recorded results are already in `results/`. Running `main.py` retunes all five models
 and rewrites the training reports; no rerun is needed just to read them.
 
-The raw data file `all_data.csv` (from https://github.com/MichiganNLP/multilingual_reviews_deception)
-must be placed in `data/raw/`. The default command runs data preparation and training-set
+The original raw CSV is already included at `data/raw/all_data.csv`, from the
+[authors' repository](https://github.com/MichiganNLP/multilingual_reviews_deception).
+The default command runs data preparation and training-set
 CV, and prints descriptive/training tables. It does **not** predict on the held-out test
 set, report test performance, or write the test evaluation/prediction files.
 Full-dataset descriptive statistics remain descriptive only; they must not guide modelling.
